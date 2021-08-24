@@ -25,6 +25,15 @@ echo "Users: "
 echo "${USERS}"
 echo '==================================================================================='
 
+
+#Displaying the No. of CPU cores
+CPU=`nproc`
+echo 
+echo "NO. of CPU Cores are: ${CPU}"
+
+echo '==================================================================================='
+
+
 #Providing the User to choose 
 echo 'Enter 1 to Check the Ram ' 
 echo 'Enter 2 to Check the Disk Space Usage '
