@@ -1,0 +1,82 @@
+---
+- hosts: db
+  remote_user: vagrant
+  tasks:
+  - name: Adding the key 
+    apt_key:
+            url: https://www.mongodb.org/static/pgp/server-4.2.asc
+            state: present
+    become: true
+
+  - name: Create the list file /etc/apt/sources.list.d/mongodb-org-4.2.list 
+    copy:
+            dest: /etc/apt/sources.list.d/mongodb-org-4.2.list
+            content: | 
+              deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.2 multiverse
+    become: true
+ 
+  - name: Reload local package
+    shell: sudo apt-get update
+
+  - name: Installing mongodb 
+    shell: sudo apt-get install -y mongodb-org
+
+  - name: Holdling the package at currently installed version i.e 4.2
+    shell: | 
+        echo "mongodb-org hold" | sudo dpkg --set-selections
+        echo "mongodb-org-server hold" | sudo dpkg --set-selections
+        echo "mongodb-org-shell hold" | sudo dpkg --set-selections
+        echo "mongodb-org-mongos hold" | sudo dpkg --set-selections
+        echo "mongodb-org-tools hold" | sudo dpkg --set-selections   
+
+  - name: Start Mongodb
+    shell: sudo systemctl start mongod
+
+  - name: Enabling the mongod at the boot process 
+    shell: sudo systemctl start mongod
+
+  - name: Stoping the mongod process 
+    shell: sudo systemctl stop mongod
+
+
+  - name: Removing the existing service file
+    file:
+      path: /etc/systemd/system/mongod.service
+      state: absent
+    become: true
+
+  - name: Adding your own Service file
+    template: 
+      src: mongod.service
+      dest: /etc/systemd/system
+      owner: root
+      group: root
+      mode: '755'
+    become: true
+
+  - name: Reloading the dameon after changing the service file
+    shell:  sudo systemctl daemon-reload
+
+  - name: Running mongod with your own configurations
+    template:
+            src: mongod.conf
+            dest: /etc/mongod.conf
+            owner: root
+            group: root
+            mode: '0644'     
+    become: true 
+
+  - name: Taking a restart to Run with new configurations
+    shell: sudo systemctl restart mongod
+
+    #  - name: Launching with new monfod file
+    #    template:
+    #      src: mongod.conf.replica
+    #      dest: /etc/mongod.conf
+    #    become: true
+    #
+    #  - name: Intiating Replica sets
+    #    shell: /usr/bin/mongo templates/init.js
+    #
+    #  - name: Taking a restart to Run with new configurations
+    #    shell: sudo systemctl restart mongod
