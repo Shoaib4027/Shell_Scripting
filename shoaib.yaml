@@ -33,7 +33,7 @@
     shell: sudo systemctl start mongod
 
   - name: Enabling the mongod at the boot process 
-    shell: sudo systemctl start mongod
+    shell: sudo systemctl enable mongod
 
   - name: Stoping the mongod process 
     shell: sudo systemctl stop mongod
@@ -41,7 +41,7 @@
 
   - name: Removing the existing service file
     file:
-      path: /etc/systemd/system/mongod.service
+      path: /lib/systemd/system/mongod.service
       state: absent
     become: true
 
@@ -68,15 +68,23 @@
 
   - name: Taking a restart to Run with new configurations
     shell: sudo systemctl restart mongod
+  
+  - name: Include variables
+    include_vars:
+      file: "var.yml"  
+  
+  - name: replica set init.js script
+    template:
+      src: init.js
+      dest: /home/vagrant
+      owner: vagrant
+      group: vagrant
+      mode: '0644'
+    become: true 
+    when: inventory_hostname == "{{ p_ip }}"
 
-    #  - name: Launching with new monfod file
-    #    template:
-    #      src: mongod.conf.replica
-    #      dest: /etc/mongod.conf
-    #    become: true
-    #
-    #  - name: Intiating Replica sets
-    #    shell: /usr/bin/mongo templates/init.js
-    #
-    #  - name: Taking a restart to Run with new configurations
-    #    shell: sudo systemctl restart mongod
+
+  - name: running rs.initiate()
+    shell: /usr/bin/mongo /home/vagrant/init.js
+    when: inventory_hostname == "{{ p_ip }}"
+

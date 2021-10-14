@@ -1,0 +1,8 @@
+---
+p_ip: 192.168.33.20
+s1_ip: 192.168.33.30
+s2_ip: 192.168.33.40
+p_hostname: Host1
+s1_hostname: Host2
+s2_hostname: Host3
+replSetName: rs01
