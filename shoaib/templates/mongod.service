@@ -1,0 +1,39 @@
+
+[Unit]
+Description=MongoDB Database Server
+Documentation=https://docs.mongodb.org/manual
+After=network.target
+
+[Service]
+User=mongodb
+Group=mongodb
+Environment="OPTIONS=-f /etc/mongod.conf"
+EnvironmentFile=-/etc/sysconfig/mongod
+ExecStart=/usr/bin/numactl --interleave=all /usr/bin/mongod --config /etc/mongod.conf
+ExecStartPre=/bin/mkdir -p /var/run/mongodb
+ExecStartPre=/bin/chown mongodb:mongodb /var/run/mongodb
+ExecStartPre=/bin/chmod 0755 /var/run/mongodb
+PermissionsStartOnly=true
+PIDFile=/var/run/mongodb/mongod.pid
+Type=forking
+# file size
+LimitFSIZE=infinity
+# cpu time
+LimitCPU=infinity
+# virtual memory size
+LimitAS=infinity
+# open files
+LimitNOFILE=64000
+# processes/threads
+LimitNPROC=64000
+# locked memory
+LimitMEMLOCK=infinity
+# total threads (user+kernel)
+TasksMax=infinity
+TasksAccounting=false
+# Recommended limits for for mongod as specified in
+# http://docs.mongodb.org/manual/reference/ulimit/#recommended-settings
+
+[Install]
+WantedBy=multi-user.target
+

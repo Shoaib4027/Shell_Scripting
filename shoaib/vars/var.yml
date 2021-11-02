@@ -1,0 +1,8 @@
+---
+p_ip: 192.168.33.50
+s1_ip: 192.168.33.60
+s2_ip: 192.168.33.70
+p_hostname: dbserver1
+s1_hostname: dbserver2
+s2_hostname: dbserver3
+replSetName: shoaib

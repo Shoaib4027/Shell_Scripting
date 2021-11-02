@@ -1,0 +1,140 @@
+---
+- hosts: db
+  remote_user: vagrant
+  tasks:
+  - name: Adding the key 
+    apt_key:
+            url: https://www.mongodb.org/static/pgp/server-4.2.asc
+            state: present
+    become: true
+
+  - name: Create the list file /etc/apt/sources.list.d/mongodb-org-4.2.list 
+    copy:
+            dest: /etc/apt/sources.list.d/mongodb-org-4.2.list
+            content: | 
+              deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.2 multiverse
+    become: true
+
+  - name: Include variables
+    include_vars:
+      file: "var.yml"  
+ 
+  - name: Reload local package
+    shell: sudo apt-get update
+
+  - name: Installing mongodb 
+    shell: sudo apt-get install -y mongodb-org
+
+  - name: Holdling the package at currently installed version i.e 4.2
+    shell: | 
+        echo "mongodb-org hold" | sudo dpkg --set-selections
+        echo "mongodb-org-server hold" | sudo dpkg --set-selections
+        echo "mongodb-org-shell hold" | sudo dpkg --set-selections
+        echo "mongodb-org-mongos hold" | sudo dpkg --set-selections
+        echo "mongodb-org-tools hold" | sudo dpkg --set-selections   
+
+  - name: Start Mongodb
+    shell: sudo systemctl start mongod
+   
+  - name: disable thp init script
+    template:
+            src: disable-transparent-huge-pages.service
+            dest: /etc/systemd/system/
+            mode: '0755'
+    become: true
+    
+  - name: daemon reload for thp
+    shell: sudo systemctl daemon-reload
+
+  - name: start thp
+    shell: sudo systemctl start disable-transparent-huge-pages
+
+  - name: enable thp on boot
+    shell: sudo systemctl enable disable-transparent-huge-pages
+  
+
+
+  - name: Enabling the mongod at the boot process 
+    shell: sudo systemctl enable mongod
+
+  - name: Stoping the mongod process 
+    shell: sudo systemctl stop mongod
+
+  - name: maping host files on Primary 
+    shell: | 
+          echo "{{ s1_ip }} {{ s1_hostname }}" >> /etc/hosts 
+          echo "{{ s2_ip }} {{ s2_hostname }}" >> /etc/hosts
+    when: inventory_hostname == "{{ p_ip }}"
+    become: true
+
+  - name: Mapping host files on Secondary1
+    shell: |
+         echo "{{ p_ip }} {{ p_hostname }}" >> /etc/hosts
+         echo "{{ s2_ip }} {{ s1_hostname }}" >> /etc/hosts
+    when: inventory_hostname == "{{ s1_ip }}"  
+    become: true
+
+  - name: Mapping host files on Secondary2
+    shell: | 
+          echo "{{ p_ip }} {{ p_hostname }}" >> /etc/hosts
+          echo "{{ s1_ip }} {{ s1_hostname }}" >> /etc/hosts
+    when: inventory_hostname == "{{ s2_ip }}"
+    become: true
+
+  - name: Removing the existing service file
+    file:
+      path: /lib/systemd/system/mongod.service
+      state: absent
+    become: true
+ 
+  - name: Installing NUMA
+    shell: sudo apt install -y numactl
+   
+  - name: Keyfile 
+    template:
+      src: keyfile
+      dest: /etc/
+      owner: mongodb
+      group: mongodb 
+      mode: '0400'
+    become: true   
+
+  - name: Starting mongod without numa
+    template: 
+      src: mongod.service
+      dest: /etc/systemd/system
+      owner: root
+      group: root
+      mode: '755'
+    become: true
+
+  - name: Reloading the dameon after changing the service file
+    shell:  sudo systemctl daemon-reload
+
+  - name: Running mongod with your own configurations
+    template:
+            src: mongod.conf
+            dest: /etc/mongod.conf
+            owner: root
+            group: root
+            mode: '0644'     
+    become: true 
+
+  - name: Taking a restart to Run with new configurations
+    shell: sudo systemctl restart mongod 
+  
+  - name: replica set init.js script
+    template:
+      src: init.js
+      dest: /home/vagrant
+      owner: vagrant
+      group: vagrant
+      mode: '0644'
+    become: true 
+    when: inventory_hostname == "{{ p_ip }}"
+
+
+  - name: running rs.initiate()
+    shell: /usr/bin/mongo /home/vagrant/init.js
+    when: inventory_hostname == "{{ p_ip }}"
+
